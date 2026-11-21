@@ -1,0 +1,123 @@
+name: Build and publish twintaillauncher-cn to AUR
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to package (ttl-vX.Y.Z-cn.N)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aur-publish-twintaillauncher-cn
+  cancel-in-progress: false
+
+env:
+  PACKAGE_NAME: twintaillauncher-cn
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  build:
+    name: Build package
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      pkgver: ${{ steps.render.outputs.pkgver }}
+    steps:
+      - name: Check out the release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          persist-credentials: false
+
+      # pkgver 2.5.3.cn.1 maps to tag ttl-v2.5.3-cn.1; the upstream part must
+      # match the app version so the in-app update check compares correctly.
+      - name: Render PKGBUILD
+        id: render
+        env:
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! $TAG =~ ^ttl-v([0-9]+\.[0-9]+\.[0-9]+)-cn\.([0-9]+)$ ]]; then
+            printf 'Unsupported tag: %s\n' "$TAG" >&2
+            exit 1
+          fi
+          version=${BASH_REMATCH[1]}
+          pkgver="$version.cn.${BASH_REMATCH[2]}"
+          app_version=$(jq -r .version src-tauri/tauri.conf.json)
+          if [[ $app_version != "$version" ]]; then
+            printf 'Tag %s does not match app version %s\n' "$TAG" "$app_version" >&2
+            exit 1
+          fi
+          mkdir -p aur
+          source="aur/$PACKAGE_NAME-$pkgver.tar.gz"
+          curl -fsSL -o "$source" "https://github.com/$REPOSITORY/archive/refs/tags/$TAG.tar.gz"
+          sha256=$(sha256sum "$source" | cut -d' ' -f1)
+          sed -e "s/@PKGVER@/$pkgver/" -e "s/@SHA256@/$sha256/" packaging/aur/PKGBUILD.in > aur/PKGBUILD
+          printf 'pkgver=%s\n' "$pkgver" >>"$GITHUB_OUTPUT"
+
+      # libappindicator-gtk3 is only in the AUR and is not needed to compile,
+      # so the build installs the official dependencies and uses --nodeps.
+      - name: Build package in Arch Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --env BUILD_UID="$(id -u)" \
+            --volume "$PWD/aur:/pkg" \
+            --workdir /pkg \
+            archlinux:base-devel \
+            bash -euc '
+              pacman -Syu --needed --noconfirm cairo desktop-file-utils gdk-pixbuf2 glib2 gtk3 \
+                hicolor-icon-theme pango webkit2gtk-4.1 libayatana-appindicator mangohud \
+                git openssl appmenu-gtk-module librsvg cargo pnpm nodejs
+              useradd --uid "$BUILD_UID" --create-home builder
+              chown -R builder:builder /pkg
+              runuser -u builder -- makepkg --cleanbuild --nodeps --noconfirm
+              runuser -u builder -- bash -c "makepkg --printsrcinfo > .SRCINFO"
+              contents=$(bsdtar -tf ./*.pkg.tar.zst)
+              for path in usr/bin/twintaillauncher usr/lib/twintaillauncher/resources/reaper \
+                usr/lib/twintaillauncher/resources/locales/en_US.json usr/share/applications/twintaillauncher.desktop; do
+                grep -qx "$path" <<<"$contents" || { printf "Missing %s in package\n" "$path" >&2; exit 1; }
+              done
+            '
+
+      - name: Upload PKGBUILD and package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: twintaillauncher-cn-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            aur/PKGBUILD
+            aur/.SRCINFO
+            aur/*.pkg.tar.zst
+          include-hidden-files: true
+          if-no-files-found: error
+
+  publish:
+    name: Publish to AUR
+    needs: build
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download the built PKGBUILD
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: twintaillauncher-cn-${{ github.run_id }}-${{ github.run_attempt }}
+          path: aur
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@da03e160361ce01bf087e790b6ffd196d7dccff7 # v4.1.3
+        with:
+          pkgname: twintaillauncher-cn
+          pkgbuild: ./aur/PKGBUILD
+          commit_username: ParticleG
+          commit_email: particle_g@outlook.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ needs.build.outputs.pkgver }}-1"
