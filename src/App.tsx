@@ -806,38 +806,33 @@ export default class App extends React.Component<any, any> {
     }
 
     pushGames(repos: { id: string; github_id: any; }[]) {
-        repos.forEach((r: { id: string; github_id: any; }) => {
-            invoke<any[] | null>("list_manifests_by_repository_id", { repositoryId: r.id }).then(g => {
-                if (g === null) {
-                    console.error("Manifest database table contains nothing, some serious fuck up happened!")
-                } else {
-                    this.pushGamesInfo(g);
-                    let entries: any[] = [];
-                    g.forEach((e: any) => entries.push(e));
-                    // @ts-ignore
-                    r["manifests"] = entries;
-                    this.setReposList(repos);
-                }
-            }).catch(e => {
-                console.error("Error while listing database manifest information: " + e)
-            })
+        Promise.all(repos.map((r: { id: string; github_id: any; }) => invoke<any[] | null>("list_manifests_by_repository_id", { repositoryId: r.id }).then(g => {
+            // @ts-ignore
+            r["manifests"] = g ?? [];
+            return g ?? [];
+        }))).then(manifests => {
+            this.setReposList(repos);
+            // list_game_manifests returns the games of every repository, so match them against the manifests of all repositories at once
+            this.pushGamesInfo(manifests.flat());
+        }).catch(e => {
+            console.error("Error while listing database manifest information: " + e)
         });
     }
 
     pushGamesInfo(games: { filename: any; display_name: string; id: string; enabled: boolean; }[]) {
-        invoke<any[] | null>("list_game_manifests").then(gi => {
-            if (gi === null) {
+        invoke<any[] | null>("list_game_manifests").then(result => {
+            if (result === null) {
                 console.error("GameManifest repository fetch issue, some serious fuck up happened!")
             } else {
                 // Hacky way to pass some values from DB manifest data onto the list of games we use to render SideBarIcon components
-                gi.forEach((e: any) => {
+                const gi = result.filter((e: any) => {
                     let g = games.find(g => g.filename.toLowerCase().replace(".json", "") === e.biz.toLowerCase());
-                    // @ts-ignore
+                    // A manifest left on disk without a database entry is not listed
+                    if (!g) return false;
                     e["manifest_id"] = g.id;
-                    // @ts-ignore
                     e["manifest_enabled"] = g.enabled;
-                    // @ts-ignore
                     e["manifest_file"] = g.filename;
+                    return true;
                 });
 
                 this.setState(() => ({ gamesinfo: gi }), () => {
@@ -849,11 +844,11 @@ export default class App extends React.Component<any, any> {
                     }
 
                     if (this.state.installs.length === 0) {
-                        if (games.length > 0 && this.state.currentGame == "") {
+                        if (gi.length > 0 && this.state.currentGame == "") {
                             // Use dynamic background if available (unless on Linux), otherwise fall back to static
                             let bg = (!isLinux && gi[0].assets.game_live_background) || gi[0].assets.game_background;
-                            this.setCurrentGame(games[0].filename.replace(".json", ""));
-                            this.setDisplayName(games[0].display_name);
+                            this.setCurrentGame(gi[0].manifest_file.replace(".json", ""));
+                            this.setDisplayName(gi[0].display_name);
                             this.setBackground(bg);
                             this.setGameIcon(gi[0].assets.game_icon);
                             setTimeout(() => {
@@ -861,8 +856,8 @@ export default class App extends React.Component<any, any> {
                                 document.getElementById(gi[0].biz).focus();
                             }, 20);
                         }
-                    } else {
-                        this.setCurrentGame(games[0].filename.replace(".json", ""));
+                    } else if (gi.length > 0) {
+                        this.setCurrentGame(gi[0].manifest_file.replace(".json", ""));
                         this.setDisplayName(this.state.installs[0].name);
                         this.setBackground(this.state.installs[0].game_background);
                         this.setGameIcon(this.state.installs[0].game_icon);
