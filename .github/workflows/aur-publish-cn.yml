@@ -104,6 +104,9 @@ jobs:
     needs: build
     if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
     runs-on: ubuntu-latest
+    # The AUR key is a secret of the aur environment, which only allows this
+    # fork's release tags; workflows inherited from upstream cannot read it.
+    environment: aur
     timeout-minutes: 15
     steps:
       - name: Download the built PKGBUILD
