@@ -656,7 +656,7 @@ pub fn open_in_prefix<R: Runtime>(app: AppHandle<R>, install_id: String, path_ty
 #[tauri::command]
 pub async fn check_app_update<R: Runtime>(app: AppHandle<R>) -> bool {
     tokio::task::spawn_blocking(move || {
-        let Some(r) = fischl::utils::get_github_release("TwintailTeam/TwintailLauncher".to_string()) else { return false; };
+        let Some(r) = fischl::utils::get_github_release("ParticleG/TwintailLauncher-CN".to_string()) else { return false; };
         let v = r.tag_name.unwrap_or_default().replace("ttl-v", "");
         let cfg = app.config();
         match compare_version(cfg.version.clone().unwrap().as_str(), v.as_str()) {

@@ -2,7 +2,7 @@
     "$schema": "https://schema.tauri.app/config/2",
     "productName": "twintaillauncher",
     "version": "2.5.3",
-    "identifier": "twintaillauncher",
+    "identifier": "twintaillauncher-cn",
     "build": {
         "beforeDevCommand": "pnpm dev",
         "devUrl": "http://localhost:1420",

@@ -1,4 +1,17 @@
 # TwintailLauncher
+
+> [!NOTE]
+> **This is a fork, not the official TwintailLauncher.** It adds only fixes that make third-party game repositories usable, reported upstream in [TwintailTeam/TwintailLauncher#379](https://github.com/TwintailTeam/TwintailLauncher/issues/379):
+>
+> - A **Repositories** sidebar entry with an **Add repository** form (`owner/name` or `https://host/owner/name`).
+> - The game list works with more than one game repository.
+> - The **Auto-update 3rd Party Repos** setting is visible and fetches third-party repositories on startup.
+> - `DOWNLOAD_MODE_FILE` patches are selected by `diff_type` (`hgdiff`) instead of by game.
+>
+> It stores its data in `twintaillauncher-cn` instead of `twintaillauncher`, so it does not share installs with the official build, and it checks this fork's releases for updates. Release tags are `ttl-v<upstream version>-cn.<n>`; the AUR package is `twintaillauncher-cn`.
+>
+> Report problems with this fork in [ParticleG/TwintailLauncher-CN](https://github.com/ParticleG/TwintailLauncher-CN/issues), not upstream. Manifests for the Chinese Arknights servers are in [ParticleG/twintail-cn-manifests](https://github.com/ParticleG/twintail-cn-manifests).
+
 <!-- TOC -->
 * [TwintailLauncher](#twintaillauncher)
   * [About](#about)
