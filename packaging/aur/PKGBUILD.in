@@ -31,7 +31,9 @@ build() {
 
 package() {
     cd "$_dirname"
-    local resources=src-tauri/target/release/resources
+    # tauri-build copies these to OUT_DIR/../../.., which is no longer target/release
+    # with the build-dir layout of Cargo 1.100, so install the tracked originals.
+    local resources=src-tauri/resources
     install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname"
     install -Dm755 "$resources/reaper" "$resources/winetricks" -t "$pkgdir/usr/lib/$_pkgname/resources"
     install -Dm644 "$resources/hkrpg_patch.dll" "$resources/suspend_start.exe" -t "$pkgdir/usr/lib/$_pkgname/resources"
