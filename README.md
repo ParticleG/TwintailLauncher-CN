@@ -7,8 +7,11 @@
 > - The game list works with more than one game repository.
 > - The **Auto-update 3rd Party Repos** setting is visible and fetches third-party repositories on startup.
 > - `DOWNLOAD_MODE_FILE` patches are selected by `diff_type` (`hgdiff`) instead of by game.
+> - An invalid repository is not added, and an invalid manifest is skipped at startup instead of crashing the launcher.
 >
 > It stores its data in `twintaillauncher-cn` instead of `twintaillauncher`, so it does not share installs with the official build, and it checks this fork's releases for updates. Release tags are `ttl-v<upstream version>-cn.<n>`; the AUR package is `twintaillauncher-cn`.
+>
+> Upstream closed that issue as working as intended until 3.0, which its maintainer says will bring support for Chinese game clients. This fork will stop being maintained once an official release supports them.
 >
 > Report problems with this fork in [ParticleG/TwintailLauncher-CN](https://github.com/ParticleG/TwintailLauncher-CN/issues), not upstream. Manifests for the Chinese Arknights servers are in [ParticleG/twintail-cn-manifests](https://github.com/ParticleG/twintail-cn-manifests).
 
