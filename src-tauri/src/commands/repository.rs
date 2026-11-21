@@ -1,7 +1,7 @@
 use tauri::{AppHandle, Runtime, Manager};
 use crate::utils::db_manager::{delete_repository_by_id, get_repositories, get_repository_info_by_id};
 use crate::utils::models::LauncherRepository;
-use crate::utils::repo_manager::clone_new_repository;
+use crate::utils::repo_manager::{clone_new_repository, load_manifests};
 
 #[tauri::command]
 pub fn list_repositories<R: Runtime>(app: AppHandle<R>) -> Option<Vec<LauncherRepository>> {
@@ -15,16 +15,22 @@ pub fn get_repository<R: Runtime>(app: AppHandle<R>, repository_id: String) -> O
 
 #[tauri::command]
 pub fn add_repository<R: Runtime>(app: AppHandle<R>, url: String) -> Option<bool> {
-    if url.is_empty() {
+    // clone_new_repository reads the owner and name from https://<host>/<owner>/<name>
+    let parts = url.split('/').collect::<Vec<&str>>();
+    if !url.starts_with("https://") || parts.len() != 5 || parts[2..].iter().any(|p| p.is_empty()) {
+        log::warn!("Rejected repository URL: {}", url);
         None
     } else {
         log::info!("Adding repository: {}", url);
-        let path = app.path().app_data_dir().unwrap().join("manifests");
-        let rtn = clone_new_repository(&app, &path, url.clone());
+        let data_dir = app.path().app_data_dir().unwrap();
+        let rtn = clone_new_repository(&app, &data_dir.join("manifests"), url.clone());
 
         if rtn.is_ok() {
             log::info!("Successfully added repository: {}", url);
-            Some(rtn.unwrap())
+            let added = rtn.unwrap();
+            // Make the new games available without restarting the launcher
+            if added { load_manifests(&app, data_dir); }
+            Some(added)
         } else {
             log::warn!("Failed to add repository: {}", url);
             None

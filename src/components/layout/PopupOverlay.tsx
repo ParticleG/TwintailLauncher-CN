@@ -144,7 +144,7 @@ export default function PopupOverlay(props: PopupOverlayProps) {
             fetchRepositories={fetchRepositories}
           />
         )}
-        {openPopup == POPUPS.ADDREPO && <AddRepo setOpenPopup={setOpenPopup} />}
+        {openPopup == POPUPS.ADDREPO && <AddRepo setOpenPopup={setOpenPopup} fetchRepositories={fetchRepositories} />}
         {openPopup == POPUPS.DOWNLOADGAME && (
           <DownloadGame
             fetchDownloadSizes={fetchDownloadSizes}

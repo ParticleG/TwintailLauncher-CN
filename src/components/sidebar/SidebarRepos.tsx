@@ -34,11 +34,20 @@ export default function SidebarRepos({setOpenPopup, popup}: {setOpenPopup: (a: P
         hover
     ]);
 
+    const isActive = popup == POPUPS.REPOMANAGER || popup == POPUPS.ADDREPO;
+
     return (
         <React.Fragment>
-            <Boxes ref={refs.setReference} {...getReferenceProps()} className="text-white hover:text-white/55 w-8 h-10 mb-0 cursor-pointer flex-initial" onClick={() => {
-                setOpenPopup(popup == POPUPS.NONE ? POPUPS.REPOMANAGER : POPUPS.NONE);
-            }} />
+            <div
+                ref={refs.setReference}
+                {...getReferenceProps()}
+                className={`flex items-center justify-center w-10 h-10 rounded-xl cursor-pointer transition-all duration-200 ${isActive ? 'text-purple-400 bg-purple-500/15 shadow-[0_0_12px_rgba(147,51,234,0.3)]' : 'text-white/70 hover:text-white hover:bg-white/5 hover:shadow-[0_0_12px_rgba(147,51,234,0.15)]'} active:scale-95`}
+                onClick={() => {
+                    setOpenPopup(isActive ? POPUPS.NONE : POPUPS.REPOMANAGER);
+                }}
+            >
+                <Boxes className="w-6 h-6" />
+            </div>
 
             {(isOpen && popup == POPUPS.NONE) && (
                 <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()} className="bg-black/75 rounded-md p-2 min-w-max z-50">

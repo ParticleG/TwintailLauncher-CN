@@ -20,6 +20,7 @@ import PlayStatsOverlay from "./components/layout/PlayStatsOverlay";
 import { startInitialLoad, NetworkMonitor, type RecoveryProgress, type NetworkStatus } from "./services/loader";
 import { showDialogAsync, closeCurrentDialog } from "./context/DialogContext";
 import SidebarRunners from "./components/sidebar/SidebarRunners.tsx";
+import SidebarRepos from "./components/sidebar/SidebarRepos.tsx";
 import SidebarDownloads from "./components/sidebar/SidebarDownloads";
 import { toPercent } from "./utils/progress";
 import BackgroundControls from "./components/common/BackgroundControls";
@@ -487,6 +488,8 @@ export default class App extends React.Component<any, any> {
                                 ...(window.navigator.platform.includes("Linux") ? [
                                     <SidebarRunners key="runners" popup={this.state.openPopup} currentPage={this.state.currentPage} setCurrentPage={this.setCurrentPage} />
                                 ] : []),
+                                // Repositories
+                                <SidebarRepos key="repos" popup={this.state.openPopup} setOpenPopup={this.setOpenPopup} />,
                                 // Settings
                                 <SidebarSettings key="settings" popup={this.state.openPopup} setOpenPopup={this.setOpenPopup} currentPage={this.state.currentPage} setCurrentPage={this.setCurrentPage} />,
                                 // Discord
