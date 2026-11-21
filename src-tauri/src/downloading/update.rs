@@ -167,10 +167,11 @@ pub fn run_game_update<R: Runtime>(h5: AppHandle<R>, payload: DownloadGamePayloa
                     }
                 } else {
                     // we have diffs update the game
-                    match gbiz.as_str() {
-                        "endfield_global" => {
+                    let diff_type = urls[0].diff_type.clone();
+                    match diff_type.as_str() {
+                        "hgdiff" => {
                             let diff_files = urls;
-                            log::debug!("Starting update of {} using DOWNLOAD_MODE_FILE (endfield_global) with {} diff file(s)", install.name, diff_files.len());
+                            log::debug!("Starting update of {} using DOWNLOAD_MODE_FILE (hgdiff) with {} diff file(s)", install.name, diff_files.len());
                             let combined_download_total: u64 = diff_files.iter().map(|e| e.compressed_size.parse::<u64>().unwrap_or(0)).sum();
                             let combined_install_total: u64 = diff_files.iter().map(|e| e.decompressed_size.parse::<u64>().unwrap_or(0)).sum();
                             let cumulative_download = Arc::new(AtomicU64::new(0));
@@ -235,19 +236,19 @@ pub fn run_game_update<R: Runtime>(h5: AppHandle<R>, payload: DownloadGamePayloa
                                     if patching_path.exists() { let _ = fs::remove_dir_all(&patching_path); }
                                     update_install_after_update_by_id(&h5, install.id.clone(), vn.clone(), ig.clone(), gb.clone(), vc.clone());
                                     h5.emit("update_complete", ()).unwrap();
-                                    log::debug!("Successfully updated {} using DOWNLOAD_MODE_FILE (endfield_global), marking as complete", install.name);
+                                    log::debug!("Successfully updated {} using DOWNLOAD_MODE_FILE (hgdiff), marking as complete", install.name);
                                     success = true;
                                     #[cfg(target_os = "linux")]
                                     crate::utils::shortcuts::sync_desktop_shortcut(&h5, install.id.clone(), picked.metadata.versioned_name.clone());
                                 } else {
                                     if !cancel_token.load(Ordering::Relaxed) { show_dialog_with_callback(&h5, "warning", "TwintailLauncher", "dialogs.game_update_error", Some(vec!["dialogs.buttons.ok"]), None, Some(std::collections::HashMap::from([("install_name", install.name.as_str())]))); }
                                     h5.emit("update_complete", ()).unwrap();
-                                    log::debug!("Error occurred during DOWNLOAD_MODE_FILE (endfield_global) extraction for {}, marking as failed", install.name);
+                                    log::debug!("Error occurred during DOWNLOAD_MODE_FILE (hgdiff) extraction for {}, marking as failed", install.name);
                                 }
                             } else {
                                 if !cancel_token.load(Ordering::Relaxed) { show_dialog_with_callback(&h5, "warning", "TwintailLauncher", "dialogs.game_update_error", Some(vec!["dialogs.buttons.ok"]), None, Some(std::collections::HashMap::from([("install_name", install.name.as_str())]))); }
                                 h5.emit("update_complete", ()).unwrap();
-                                log::debug!("Error occurred during DOWNLOAD_MODE_FILE (endfield_global) download for {}, marking as failed", install.name);
+                                log::debug!("Error occurred during DOWNLOAD_MODE_FILE (hgdiff) download for {}, marking as failed", install.name);
                             }
                         }
                         _ => {
