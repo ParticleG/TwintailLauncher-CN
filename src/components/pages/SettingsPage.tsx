@@ -135,12 +135,12 @@ export default function SettingsPage({ settings, fetchSettings, setCurrentPage, 
                                 options={availableLocales}
                                 onChange={(val) => updateSetting("app_lang", val)}
                             />
-                            {/*<ModernToggle
+                            <ModernToggle
                                 label="Auto-update 3rd Party Repos"
                                 description="Automatically update third-party repositories and their manifests on startup."
                                 checked={Boolean(settings.third_party_repo_updates)}
                                 onChange={(val) => updateSetting("third_party_repo_updates", val)}
-                            />*/}
+                            />
                         </SettingsSection>
                     )}
 

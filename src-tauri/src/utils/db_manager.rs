@@ -2,7 +2,7 @@ use crate::utils::models::{
     GlobalSettings, LauncherInstall, LauncherManifest, LauncherRepository, LauncherRunner,
     XXMISettings,
 };
-use crate::utils::repo_manager::{setup_compatibility_repository, setup_official_repository};
+use crate::utils::repo_manager::{setup_compatibility_repository, setup_official_repository, update_third_party_repositories};
 use crate::utils::{run_async_command, setup_or_fix_default_paths};
 use sqlx::types::Json;
 use sqlx::{Error, Pool, Row, Sqlite, error::BoxDynError, migrate::{MigrateDatabase, Migration as SqlxMigration, MigrationSource, MigrationType, Migrator}, query, sqlite::SqliteQueryResult, SqlSafeStr};
@@ -246,6 +246,7 @@ pub async fn init_db<R: Runtime>(app: &AppHandle<R>, data_path: std::path::PathB
         setup_official_repository(&app, &manifests_dir);
         setup_compatibility_repository(&app, &manifests_dir);
     }
+    update_third_party_repositories(&app, &manifests_dir);
 }
 
 // === SETTINGS ===

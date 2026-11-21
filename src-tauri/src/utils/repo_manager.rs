@@ -5,7 +5,7 @@ use std::sync::{RwLock};
 use crate::utils::LinkedHashMap;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime, Manager};
-use crate::utils::db_manager::{create_manifest,create_repository,delete_manifest_by_id,get_manifest_info_by_filename,get_manifests_by_repository_id,get_repositories,get_repository_info_by_github_id,update_manifest_enabled_by_id};
+use crate::utils::db_manager::{create_manifest,create_repository,delete_manifest_by_id,get_manifest_info_by_filename,get_manifests_by_repository_id,get_repositories,get_repository_info_by_github_id,get_settings,update_manifest_enabled_by_id};
 use crate::utils::{models::{RepositoryManifest, RunnerManifest, GameManifest}, show_dialog_with_callback};
 use crate::utils::git_helpers::{do_fetch, do_merge};
 
@@ -133,6 +133,18 @@ pub fn update_repositories(path: &PathBuf) -> Result<bool, git2::Error> {
         #[cfg(debug_assertions)]
         { println!("Failed to fetch repository updates!"); }
         Ok(false)
+    }
+}
+
+pub fn update_third_party_repositories<R: Runtime>(app: &AppHandle<R>, path: &PathBuf) {
+    if get_settings(app).map_or(true, |s| s.third_party_repo_updates == 0) { return; }
+    for repo in get_repositories(app).unwrap_or_default() {
+        // The official game and runner repositories are updated by their own setup functions
+        if repo.github_id == "TwintailTeam/game-manifests" || repo.github_id == "TwintailTeam/runner-manifests" { continue; }
+        if let Err(e) = update_repositories(&path.join(&repo.github_id)) {
+            let err = e.to_string();
+            show_dialog_with_callback(app, "warning", "TwintailLauncher", "dialogs.repo_fetch_3rdparty_failed", None, None, Some(std::collections::HashMap::from([("error", err.as_str())])));
+        }
     }
 }
 
