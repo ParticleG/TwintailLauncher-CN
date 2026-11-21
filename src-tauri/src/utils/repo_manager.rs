@@ -22,6 +22,12 @@ fn clone_repo(url: &str, path: &PathBuf) -> Result<git2::Repository, git2::Error
     if cfg!(debug_assertions) { git2::build::RepoBuilder::new().branch("next").clone(url, path) } else { git2::Repository::clone(url, path) }
 }
 
+fn read_json<T: serde::de::DeserializeOwned>(path: &std::path::Path) -> Option<T> {
+    let parsed = fs::File::open(path).map_err(|e| e.to_string()).and_then(|f| serde_json::from_reader(BufReader::new(f)).map_err(|e| e.to_string()));
+    if let Err(e) = &parsed { log::warn!("Skipping invalid manifest {}: {}", path.display(), e); }
+    parsed.ok()
+}
+
 pub fn setup_official_repository<R: Runtime>(app: &AppHandle<R>, path: &PathBuf) {
     let url = "https://github.com/TwintailTeam/game-manifests.git";
 
@@ -81,26 +87,25 @@ pub fn clone_new_repository<R: Runtime>(app: &AppHandle<R>, path: &PathBuf, url:
     } else if !repo_path.exists() {
        let repo = clone_repo(url.as_str(), &repo_path);
 
-        if repo_manifest.exists() && repo.is_ok() {
-            let rm = fs::File::open(&repo_manifest).unwrap();
-            let reader = BufReader::new(rm);
-            let rma: RepositoryManifest = serde_json::from_reader(reader).unwrap();
+        // Validate everything before touching the database, so a broken repository is neither
+        // registered nor left on disk where load_manifests would read it on every start
+        let manifests = if repo.is_ok() {
+            read_json::<RepositoryManifest>(&repo_manifest).and_then(|rma| rma.manifests.into_iter().map(|m| read_json::<GameManifest>(&repo_path.join(&m)).map(|mi| (m, mi))).collect::<Option<Vec<_>>>())
+        } else { None };
 
+        if let Some(manifests) = manifests {
             let repo_id = uuid::Uuid::now_v7().to_string();
             create_repository(app, repo_id.clone(), format!("{user}/{repo_name}").as_str()).unwrap();
 
-            for m in rma.manifests {
-                let mf = fs::File::open(&repo_path.join(&m.as_str())).unwrap();
-                let reader = BufReader::new(mf);
-                let mi: GameManifest = serde_json::from_reader(reader).unwrap();
-
+            for (m, mi) in manifests {
                 let cuid = uuid::Uuid::now_v7().to_string();
-                create_manifest(app, cuid.clone(), repo_id.clone(), mi.clone().display_name.as_str(), m.clone().as_str(), true).unwrap();
+                create_manifest(app, cuid.clone(), repo_id.clone(), mi.display_name.as_str(), m.as_str(), true).unwrap();
             }
             Ok(true)
         } else {
             #[cfg(debug_assertions)]
             { println!("Cannot clone repository! Not a valid repository?"); }
+            let _ = fs::remove_dir_all(&repo_path);
             Ok(false)
         }
     } else {
@@ -225,9 +230,7 @@ pub fn load_manifests<R: Runtime>(app: &AppHandle<R>, data_path: PathBuf) {
                         let repo_manifest = p.join("repository.json");
 
                         if repo_manifest.exists() {
-                            let rm = fs::File::open(&repo_manifest).unwrap();
-                            let reader = BufReader::new(rm);
-                            let rma: RepositoryManifest = serde_json::from_reader(reader).unwrap();
+                            let Some(rma) = read_json::<RepositoryManifest>(&repo_manifest) else { continue; };
 
                             let ml = app.state::<ManifestLoaders>().clone();
 
@@ -238,9 +241,7 @@ pub fn load_manifests<R: Runtime>(app: &AppHandle<R>, data_path: PathBuf) {
                             for m in rma.manifests {
                                 let mp = p.join(&m.as_str());
                                 if mp.exists() {
-                                    let file = fs::File::open(&mp).unwrap();
-                                    let reader = BufReader::new(file);
-                                    let manifest_data = serde_json::from_reader(reader).unwrap();
+                                    let Some(manifest_data) = read_json::<ManifestData>(&mp) else { continue; };
 
                                     match manifest_data {
                                         ManifestData::Game(mi) => {

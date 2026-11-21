@@ -26,10 +26,14 @@ pub fn add_repository<R: Runtime>(app: AppHandle<R>, url: String) -> Option<bool
         let rtn = clone_new_repository(&app, &data_dir.join("manifests"), url.clone());
 
         if rtn.is_ok() {
-            log::info!("Successfully added repository: {}", url);
             let added = rtn.unwrap();
-            // Make the new games available without restarting the launcher
-            if added { load_manifests(&app, data_dir); }
+            if added {
+                log::info!("Successfully added repository: {}", url);
+                // Make the new games available without restarting the launcher
+                load_manifests(&app, data_dir);
+            } else {
+                log::warn!("Repository was not added (invalid or already present): {}", url);
+            }
             Some(added)
         } else {
             log::warn!("Failed to add repository: {}", url);
